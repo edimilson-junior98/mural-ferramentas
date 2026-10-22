@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mural de Ferramentas — FertGrow</title>
+<link rel="icon" href="data:," />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* ---- paleta (mesma lógica de status do skill de dataviz: good/warning/serious/critical
+     são fixas e nunca reaproveitadas pra outra coisa; cor nunca carrega sentido sozinha,
+     sempre vem com ícone + texto). Cores de marca (verde Fertgrow) só no cabeçalho/branding. */
+  :root {
+    --plane: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #222220;
+    --ink: #ffffff;
+    --ink-soft: #c3c2b7;
+    --muted: #898781;
+    --line: #2c2c2a;
+    --border: rgba(255, 255, 255, 0.10);
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+    --brand: #005428;
+    --brand-light: #afd676;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: var(--plane); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .board { max-width: 1600px; margin: 0 auto; padding: 20px 28px 32px; }
+
+  /* ---- cabeçalho ---- */
+  header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    padding-bottom: 16px; margin-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .titulo-area { display: flex; align-items: center; gap: 12px; }
+  .marca {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 15px; color: var(--brand-light); flex-shrink: 0;
+  }
+  .titulo-area h1 {
+    margin: 0; font-size: 22px; letter-spacing: 0.03em; text-transform: uppercase;
+    font-weight: 900;
+  }
+  .titulo-area .data {
+    margin-top: 2px; font-size: 14px; color: var(--ink-soft); text-transform: capitalize;
+  }
+  .relogio-area { text-align: right; }
+  .relogio { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .refresh-info {
+    margin-top: 6px; font-size: 12px; color: var(--muted);
+    display: flex; align-items: center; gap: 10px; justify-content: flex-end; flex-wrap: wrap;
+  }
+  .refresh-info b { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  #btnAtualizar {
+    background: var(--surface-2); color: var(--ink-soft); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  #btnAtualizar:hover { color: var(--ink); border-color: var(--ink-soft); }
+  #statusMsg { font-size: 12px; color: var(--muted); margin-top: 4px; text-align: right; }
+  #statusMsg.erro { color: var(--critical); }
+
+  /* ---- tiles de contagem ---- */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 22px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .tile .valor { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .tile .rotulo { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
+  .tile.cor-good .valor { color: var(--good); }
+  .tile.cor-serious .valor { color: var(--serious); }
+  .tile.cor-critical .valor { color: var(--critical); }
+  .tile.cor-warning .valor { color: var(--warning); }
+
+  /* ---- seção título ---- */
+  .secao-titulo {
+    font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--ink-soft); margin: 22px 0 10px;
+  }
+
+  /* ---- lista de empréstimos ---- */
+  .lista { display: flex; flex-direction: column; gap: 8px; }
+  .linha {
+    display: grid; grid-template-columns: 1.6fr 1.3fr 1fr auto; align-items: center;
+    gap: 14px; background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--muted); border-radius: 10px; padding: 12px 16px;
+  }
+  .linha.cor-good { border-left-color: var(--good); }
+  .linha.cor-serious { border-left-color: var(--serious); }
+  .linha.cor-critical { border-left-color: var(--critical); }
+  .linha.cor-warning { border-left-color: var(--warning); }
+  .ferramenta-nome { font-weight: 700; font-size: 15px; }
+  .ferramenta-codigo { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .responsavel { font-size: 13px; color: var(--ink-soft); }
+  .departamento { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .retirada { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .hoje-tag {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 5px;
+    font-size: 10px; font-weight: 800; background: var(--brand); color: var(--brand-light);
+    text-transform: uppercase; vertical-align: middle;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .badge .ponto { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .badge.cor-good { background: rgba(12,163,12,0.16); color: var(--good); }
+  .badge.cor-good .ponto { background: var(--good); }
+  .badge.cor-serious { background: rgba(236,131,90,0.16); color: var(--serious); }
+  .badge.cor-serious .ponto { background: var(--serious); }
+  .badge.cor-critical { background: rgba(208,59,59,0.18); color: #ff8787; }
+  .badge.cor-critical .ponto { background: var(--critical); }
+  .badge.cor-warning { background: rgba(250,178,25,0.16); color: var(--warning); }
+  .badge.cor-warning .ponto { background: var(--warning); }
+
+  .vazio { padding: 20px; text-align: center; color: var(--muted); font-size: 13px; background: var(--surface); border: 1px dashed var(--border); border-radius: 10px; }
+
+  /* ---- rádios (controle separado) ---- */
+  .radios-box {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+  }
+  .radios-box .mini { display: flex; align-items: baseline; gap: 6px; }
+  .radios-box .mini .valor { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .radios-box .mini .rotulo { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; }
+  .radios-box .sep { width: 1px; height: 22px; background: var(--line); }
+
+  /* ---- legenda ---- */
+  .legenda {
+    margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+  }
+  .legenda .item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .legenda .item .ponto { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .rodape-info { margin-left: auto; font-size: 11px; color: var(--muted); text-align: right; }
+
+  @media (max-width: 900px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .linha { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="board">
+    <header>
+      <div class="titulo-area">
+        <div class="marca">FG</div>
+        <div>
+          <h1>Mural de Ferramentas — FertGrow</h1>
+          <div class="data" id="dataHoje">—</div>
+        </div>
+      </div>
+      <div class="relogio-area">
+        <div class="relogio" id="relogio">--:--:--</div>
+        <div class="refresh-info">
+          <span>Próxima atualização em <b id="contagem">--</b></span>
+          <button id="btnAtualizar" type="button">Atualizar agora</button>
+        </div>
+        <div id="statusMsg">Carregando…</div>
+      </div>
+    </header>
+
+    <section class="stats">
+      <div class="tile"><div class="valor" id="statTotal">—</div><div class="rotulo">Emprestadas</div></div>
+      <div class="tile cor-critical"><div class="valor" id="statAtrasadas">—</div><div class="rotulo">Atrasadas</div></div>
+      <div class="tile cor-serious"><div class="valor" id="statVenceHoje">—</div><div class="rotulo">Vencem hoje</div></div>
+      <div class="tile cor-good"><div class="valor" id="statHoje">—</div><div class="rotulo">Retiradas hoje</div></div>
+      <div class="tile cor-warning"><div class="valor" id="statFixas">—</div><div class="rotulo">Fixas (sem prazo)</div></div>
+    </section>
+
+    <div class="secao-titulo">Ferramentas e maletas emprestadas</div>
+    <div class="lista" id="listaFerramentas">
+      <div class="vazio">Carregando dados…</div>
+    </div>
+
+    <div class="secao-titulo">Rádios (controle separado — não entram nas contagens acima)</div>
+    <div class="radios-box" id="radiosBox">
+      <div class="mini"><span class="valor" id="radTotal">—</span><span class="rotulo">emprestados</span></div>
+      <div class="sep"></div>
+      <div class="mini"><span class="valor" id="radAtrasados" style="color:var(--critical)">—</span><span class="rotulo">atrasados</span></div>
+      <div class="sep"></div>
+      <div class="mini"><span class="valor" id="radFixos" style="color:var(--warning)">—</span><span class="rotulo">fixos</span></div>
+    </div>
+
+    <footer class="legenda">
+      <div class="item"><span class="ponto" style="background:var(--good)"></span> Em uso, dentro do prazo</div>
+      <div class="item"><span class="ponto" style="background:var(--serious)"></span> Vence hoje</div>
+      <div class="item"><span class="ponto" style="background:var(--critical)"></span> Atrasada</div>
+      <div class="item"><span class="ponto" style="background:var(--warning)"></span> Fixa (sem data de devolução)</div>
+      <div class="rodape-info">
+        Dados do Controle de Ferramentas sincronizados em <span id="fonteAtualizadoEm">—</span><br />
+        Painel atualizado às <span id="painelAtualizadoEm">—</span>
+      </div>
+    </footer>
+  </div>
+
+<script>
+  // Mesmo banco (Supabase) e mesma chave publicável já usados publicamente pelo
+  // próprio Controle de Ferramentas (controle-ferramentas-fertgrow.netlify.app) —
+  // é uma chave "publishable", feita pra ficar exposta no client, só leitura aqui.
+  const SUPABASE_URL = "https://woabzpjzjkaqkjmzsiqj.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_kAbXzgAybK885fnyV2-7kQ_6B623rg7";
+  const TABLE = "controle_ferramentas_db";
+  const ROW_ID = 1;
+  const REFRESH_MS = 60 * 60 * 1000; // 1 hora, conforme pedido
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function hojeISO() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function fmtDataCurta(iso) {
+    if (!iso) return "—";
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  function fmtDataHoraCompleta(iso) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("pt-BR");
+  }
+
+  function capitalizar(txt) {
+    return txt.replace(/(^|\s)\p{L}/gu, (c) => c.toUpperCase());
+  }
+
+  // status de um empréstimo ativo: 'fixa' (sem prazo), 'atrasada', 'vence_hoje' ou 'em_uso'
+  function statusEmprestimo(loan) {
+    if (loan.due === null || loan.due === undefined) return "fixa";
+    const hoje = hojeISO();
+    if (loan.due < hoje) return "atrasada";
+    if (loan.due === hoje) return "vence_hoje";
+    return "em_uso";
+  }
+
+  const CORES_STATUS = { em_uso: "good", vence_hoje: "serious", atrasada: "critical", fixa: "warning" };
+  const LABEL_STATUS = { em_uso: "Em uso", vence_hoje: "Vence hoje", atrasada: "Atrasada", fixa: "Fixa" };
+  const ORDEM_STATUS = { atrasada: 0, vence_hoje: 1, em_uso: 2, fixa: 3 };
+
+  function renderLinha(loan) {
+    const status = statusEmprestimo(loan);
+    const cor = CORES_STATUS[status];
+    const tool = loan.tool;
+    const hoje = hojeISO();
+    const retiradoHoje = loan.checkout === hoje;
+    const prazoTexto =
+      status === "fixa" ? "sem prazo" :
+      status === "atrasada" ? `previsto ${fmtDataCurta(loan.due)}` :
+      status === "vence_hoje" ? "vence hoje" :
+      `devolução ${fmtDataCurta(loan.due)}`;
+
+    const el = document.createElement("div");
+    el.className = `linha cor-${cor}`;
+    el.innerHTML = `
+      <div>
+        <div class="ferramenta-nome">${escapeHtml(tool.name || "—")}</div>
+        <div class="ferramenta-codigo">${escapeHtml(tool.code || "—")}${tool.tipo === "Maleta" ? " · Maleta" : ""}</div>
+      </div>
+      <div>
+        <div class="responsavel">${escapeHtml(loan.userName || "—")}</div>
+        ${loan.departamento ? `<div class="departamento">${escapeHtml(loan.departamento)}</div>` : ""}
+      </div>
+      <div class="retirada">
+        Retirada ${fmtDataCurta(loan.checkout)}${retiradoHoje ? '<span class="hoje-tag">Hoje</span>' : ""}<br/>
+        ${prazoTexto}
+      </div>
+      <div><span class="badge cor-${cor}"><span class="ponto"></span>${LABEL_STATUS[status]}</span></div>
+    `;
+    return el;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function render(payload) {
+    const tools = (payload && payload.tools) || [];
+    const loans = (payload && payload.loans) || [];
+    const toolsById = Object.fromEntries(tools.map((t) => [t.id, t]));
+
+    const ativos = loans
+      .filter((l) => !l.returned)
+      .map((l) => ({ ...l, tool: toolsById[l.toolId] }))
+      .filter((l) => !!l.tool);
+
+    const ferramentas = ativos.filter((l) => l.tool.tipo !== "Rádio");
+    const radios = ativos.filter((l) => l.tool.tipo === "Rádio");
+
+    // ---- lista principal (Ferramentas + Maletas), mais urgente primeiro ----
+    const ordenadas = [...ferramentas].sort((a, b) => {
+      const oa = ORDEM_STATUS[statusEmprestimo(a)];
+      const ob = ORDEM_STATUS[statusEmprestimo(b)];
+      if (oa !== ob) return oa - ob;
+      return (a.due || "9999-99-99").localeCompare(b.due || "9999-99-99");
+    });
+
+    const listaEl = document.getElementById("listaFerramentas");
+    listaEl.innerHTML = "";
+    if (ordenadas.length === 0) {
+      listaEl.innerHTML = '<div class="vazio">Nenhuma ferramenta emprestada no momento.</div>';
+    } else {
+      ordenadas.forEach((l) => listaEl.appendChild(renderLinha(l)));
+    }
+
+    // ---- tiles ----
+    const hoje = hojeISO();
+    const contagens = ferramentas.reduce(
+      (acc, l) => {
+        const s = statusEmprestimo(l);
+        acc[s] = (acc[s] || 0) + 1;
+        if (l.checkout === hoje) acc.retiradasHoje++;
+        return acc;
+      },
+      { em_uso: 0, vence_hoje: 0, atrasada: 0, fixa: 0, retiradasHoje: 0 }
+    );
+    document.getElementById("statTotal").textContent = ferramentas.length;
+    document.getElementById("statAtrasadas").textContent = contagens.atrasada;
+    document.getElementById("statVenceHoje").textContent = contagens.vence_hoje;
+    document.getElementById("statHoje").textContent = contagens.retiradasHoje;
+    document.getElementById("statFixas").textContent = contagens.fixa;
+
+    // ---- rádios (controle separado) ----
+    const radContagens = radios.reduce(
+      (acc, l) => {
+        const s = statusEmprestimo(l);
+        if (s === "atrasada") acc.atrasados++;
+        if (s === "fixa") acc.fixos++;
+        return acc;
+      },
+      { atrasados: 0, fixos: 0 }
+    );
+    document.getElementById("radTotal").textContent = radios.length;
+    document.getElementById("radAtrasados").textContent = radContagens.atrasados;
+    document.getElementById("radFixos").textContent = radContagens.fixos;
+  }
+
+  function setStatus(msg, erro) {
+    const el = document.getElementById("statusMsg");
+    el.textContent = msg;
+    el.className = erro ? "erro" : "";
+  }
+
+  let proximaAtualizacao = Date.now() + REFRESH_MS;
+
+  async function carregar() {
+    setStatus("Atualizando…");
+    try {
+      const { data, error } = await client
+        .from(TABLE)
+        .select("data, updated_at")
+        .eq("id", ROW_ID)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Linha de dados não encontrada na tabela.");
+      render(data.data || {});
+      document.getElementById("fonteAtualizadoEm").textContent = fmtDataHoraCompleta(data.updated_at);
+      document.getElementById("painelAtualizadoEm").textContent = new Date().toLocaleTimeString("pt-BR");
+      setStatus("Atualizado com sucesso.");
+    } catch (e) {
+      console.error(e);
+      setStatus("Erro ao carregar dados: " + (e.message || e), true);
+    } finally {
+      proximaAtualizacao = Date.now() + REFRESH_MS;
+    }
+  }
+
+  document.getElementById("btnAtualizar").addEventListener("click", carregar);
+
+  function tick() {
+    const agora = new Date();
+    document.getElementById("relogio").textContent = agora.toLocaleTimeString("pt-BR");
+    document.getElementById("dataHoje").textContent = capitalizar(
+      agora.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
+    );
+    const restanteMs = Math.max(0, proximaAtualizacao - Date.now());
+    const restanteMin = Math.floor(restanteMs / 60000);
+    const restanteSeg = Math.floor((restanteMs % 60000) / 1000);
+    document.getElementById("contagem").textContent = `${restanteMin}m${String(restanteSeg).padStart(2, "0")}s`;
+    if (restanteMs <= 0) carregar();
+  }
+
+  tick();
+  setInterval(tick, 1000);
+  carregar();
+</script>
+</body>
+</html>
