@@ -90,11 +90,11 @@
   }
 
   /* ---- lista de empréstimos ---- */
-  .lista { display: flex; flex-direction: column; gap: 8px; }
+  .lista { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 14px; align-items: start; }
   .linha {
-    display: grid; grid-template-columns: 1.6fr 1.3fr 1fr auto; align-items: center;
-    gap: 14px; background: var(--surface); border: 1px solid var(--border);
-    border-left: 4px solid var(--muted); border-radius: 10px; padding: 12px 16px;
+    display: grid; grid-template-columns: 1.3fr 1fr auto; align-items: center;
+    gap: 10px; background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--muted); border-radius: 10px; padding: 12px 14px;
   }
   .linha.cor-good { border-left-color: var(--good); }
   .linha.cor-serious { border-left-color: var(--serious); }
@@ -102,9 +102,9 @@
   .linha.cor-warning { border-left-color: var(--warning); }
   .ferramenta-nome { font-weight: 700; font-size: 15px; }
   .ferramenta-codigo { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .responsavel { font-size: 13px; color: var(--ink-soft); }
-  .departamento { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .retirada { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .responsavel { font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+  .departamento { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .retirada { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 2px; }
   .hoje-tag {
     display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 5px;
     font-size: 10px; font-weight: 800; background: var(--brand); color: var(--brand-light);
@@ -146,6 +146,9 @@
   .legenda .item .ponto { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
   .rodape-info { margin-left: auto; font-size: 11px; color: var(--muted); text-align: right; }
 
+  @media (max-width: 1200px) {
+    .lista { grid-template-columns: 1fr; }
+  }
   @media (max-width: 900px) {
     .stats { grid-template-columns: repeat(2, 1fr); }
     .linha { grid-template-columns: 1fr; }
@@ -272,12 +275,10 @@
         <div class="ferramenta-codigo">${escapeHtml(tool.code || "—")}${tool.tipo === "Maleta" ? " · Maleta" : ""}</div>
       </div>
       <div>
-        <div class="responsavel">${escapeHtml(loan.userName || "—")}</div>
-        ${loan.departamento ? `<div class="departamento">${escapeHtml(loan.departamento)}</div>` : ""}
-      </div>
-      <div class="retirada">
-        Retirada ${fmtDataCurta(loan.checkout)}${retiradoHoje ? '<span class="hoje-tag">Hoje</span>' : ""}<br/>
-        ${prazoTexto}
+        <div class="responsavel">${escapeHtml(loan.userName || "—")}${loan.departamento ? ` <span class="departamento">· ${escapeHtml(loan.departamento)}</span>` : ""}</div>
+        <div class="retirada">
+          Retirada ${fmtDataCurta(loan.checkout)}${retiradoHoje ? '<span class="hoje-tag">Hoje</span>' : ""} — ${prazoTexto}
+        </div>
       </div>
       <div><span class="badge cor-${cor}"><span class="ponto"></span>${LABEL_STATUS[status]}</span></div>
     `;
