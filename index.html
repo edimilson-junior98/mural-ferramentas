@@ -242,12 +242,18 @@
     return txt.replace(/(^|\s)\p{L}/gu, (c) => c.toUpperCase());
   }
 
+  // Tolerância antes de marcar como atrasada — mesma regra usada no Controle de
+  // Ferramentas: só vira "ATRASADA" depois de passar esse tanto de dias do prazo.
+  const TOLERANCIA_ATRASO_DIAS = 2;
+
   // status de um empréstimo ativo: 'fixa' (sem prazo), 'atrasada', 'vence_hoje' ou 'em_uso'
+  // (dentro do prazo, ou vencido mas ainda dentro da tolerância de atraso)
   function statusEmprestimo(loan) {
     if (loan.due === null || loan.due === undefined) return "fixa";
     const hoje = hojeISO();
-    if (loan.due < hoje) return "atrasada";
     if (loan.due === hoje) return "vence_hoje";
+    const diasDeAtraso = Math.round((new Date(hoje) - new Date(loan.due)) / 86400000);
+    if (diasDeAtraso > TOLERANCIA_ATRASO_DIAS) return "atrasada";
     return "em_uso";
   }
 
