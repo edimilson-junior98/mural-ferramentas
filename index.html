@@ -28,11 +28,25 @@
   }
   * { box-sizing: border-box; }
   html, body {
-    margin: 0; padding: 0; min-height: 100%;
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
     background: var(--plane); color: var(--ink);
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   }
-  .board { max-width: 1600px; margin: 0 auto; padding: 20px 28px 32px; }
+  .board {
+    max-width: 1600px; margin: 0 auto; padding: 20px 28px 16px;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+
+  /* ---- telas (slides 16:9 que se alternam sozinhas) ---- */
+  .stage { position: relative; flex: 1; min-height: 0; }
+  .tela {
+    position: absolute; inset: 0; display: none; flex-direction: column; min-height: 0;
+  }
+  .tela.ativa { display: flex; }
+  .tela .lista { flex: 1; min-height: 0; overflow-y: auto; }
+  .dots { display: flex; justify-content: center; gap: 8px; padding-top: 10px; flex-shrink: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .dot.ativo { background: var(--brand-light); }
 
   /* ---- cabeçalho ---- */
   header {
@@ -175,56 +189,67 @@
       </div>
     </header>
 
-    <section class="stats">
-      <div class="tile"><div class="valor" id="statTotal">—</div><div class="rotulo">Emprestadas</div></div>
-      <div class="tile cor-critical"><div class="valor" id="statAtrasadas">—</div><div class="rotulo">Atrasadas</div></div>
-      <div class="tile cor-serious"><div class="valor" id="statVenceHoje">—</div><div class="rotulo">Vencem hoje</div></div>
-      <div class="tile cor-good"><div class="valor" id="statHoje">—</div><div class="rotulo">Retiradas hoje</div></div>
-      <div class="tile cor-warning"><div class="valor" id="statFixas">—</div><div class="rotulo">Fixas (sem prazo)</div></div>
-    </section>
+    <div class="stage">
+      <section class="tela ativa" data-tela="0">
+        <section class="stats">
+          <div class="tile"><div class="valor" id="statTotal">—</div><div class="rotulo">Emprestadas</div></div>
+          <div class="tile cor-critical"><div class="valor" id="statAtrasadas">—</div><div class="rotulo">Atrasadas</div></div>
+          <div class="tile cor-serious"><div class="valor" id="statVenceHoje">—</div><div class="rotulo">Vencem hoje</div></div>
+          <div class="tile cor-good"><div class="valor" id="statHoje">—</div><div class="rotulo">Retiradas hoje</div></div>
+          <div class="tile cor-warning"><div class="valor" id="statFixas">—</div><div class="rotulo">Fixas (sem prazo)</div></div>
+        </section>
 
-    <div class="secao-titulo">Ferramentas e maletas emprestadas</div>
-    <div class="lista" id="listaFerramentas">
-      <div class="vazio">Carregando dados…</div>
+        <div class="secao-titulo">Ferramentas e maletas emprestadas</div>
+        <div class="lista" id="listaFerramentas">
+          <div class="vazio">Carregando dados…</div>
+        </div>
+
+        <div class="secao-titulo" style="margin-top:14px;">Rádios (controle separado — não entram nas contagens acima)</div>
+        <div class="radios-box" id="radiosBox">
+          <div class="mini"><span class="valor" id="radTotal">—</span><span class="rotulo">emprestados</span></div>
+          <div class="sep"></div>
+          <div class="mini"><span class="valor" id="radAtrasados" style="color:var(--critical)">—</span><span class="rotulo">atrasados</span></div>
+          <div class="sep"></div>
+          <div class="mini"><span class="valor" id="radFixos" style="color:var(--warning)">—</span><span class="rotulo">fixos</span></div>
+        </div>
+
+        <footer class="legenda">
+          <div class="item"><span class="ponto" style="background:var(--good)"></span> Em uso, dentro do prazo</div>
+          <div class="item"><span class="ponto" style="background:var(--serious)"></span> Vence hoje</div>
+          <div class="item"><span class="ponto" style="background:var(--critical)"></span> Atrasada</div>
+          <div class="item"><span class="ponto" style="background:var(--warning)"></span> Fixa (sem data de devolução)</div>
+          <div class="rodape-info">
+            Dados do Controle de Ferramentas sincronizados em <span id="fonteAtualizadoEm">—</span><br />
+            Painel atualizado às <span id="painelAtualizadoEm">—</span>
+          </div>
+        </footer>
+      </section>
+
+      <section class="tela" data-tela="1">
+        <div class="secao-titulo">Programação de Manutenção — Hoje (<span id="osData">—</span>)</div>
+        <section class="stats" id="osStats">
+          <div class="tile"><div class="valor" id="osTotal">—</div><div class="rotulo">OS programadas</div></div>
+          <div class="tile cor-good"><div class="valor" id="osConcluidas">—</div><div class="rotulo">Concluídas</div></div>
+          <div class="tile cor-warning"><div class="valor" id="osExecucao">—</div><div class="rotulo">Em execução</div></div>
+          <div class="tile cor-serious"><div class="valor" id="osPendentes">—</div><div class="rotulo">Pendentes</div></div>
+          <div class="tile cor-critical"><div class="valor" id="osImpedidas">—</div><div class="rotulo">Impedidas</div></div>
+        </section>
+        <div class="lista" id="listaOs" style="grid-template-columns:1fr;">
+          <div class="vazio">Carregando dados…</div>
+        </div>
+        <footer class="legenda">
+          <div class="item"><span class="ponto" style="background:var(--good)"></span> Concluída</div>
+          <div class="item"><span class="ponto" style="background:var(--warning)"></span> Em execução</div>
+          <div class="item"><span class="ponto" style="background:var(--serious)"></span> Pendente</div>
+          <div class="item"><span class="ponto" style="background:var(--critical)"></span> Impedida</div>
+          <div class="rodape-info">Dados do CMMS (sincronização com a Melvin) — só OS com programação real, não as só abertas no dia.</div>
+        </footer>
+      </section>
     </div>
 
-    <footer class="legenda">
-      <div class="item"><span class="ponto" style="background:var(--good)"></span> Em uso, dentro do prazo</div>
-      <div class="item"><span class="ponto" style="background:var(--serious)"></span> Vence hoje</div>
-      <div class="item"><span class="ponto" style="background:var(--critical)"></span> Atrasada</div>
-      <div class="item"><span class="ponto" style="background:var(--warning)"></span> Fixa (sem data de devolução)</div>
-      <div class="rodape-info">
-        Dados do Controle de Ferramentas sincronizados em <span id="fonteAtualizadoEm">—</span><br />
-        Painel atualizado às <span id="painelAtualizadoEm">—</span>
-      </div>
-    </footer>
-
-    <div class="secao-titulo" style="margin-top:30px;">Programação de Manutenção — Hoje (<span id="osData">—</span>)</div>
-    <section class="stats" id="osStats">
-      <div class="tile"><div class="valor" id="osTotal">—</div><div class="rotulo">OS programadas</div></div>
-      <div class="tile cor-good"><div class="valor" id="osConcluidas">—</div><div class="rotulo">Concluídas</div></div>
-      <div class="tile cor-warning"><div class="valor" id="osExecucao">—</div><div class="rotulo">Em execução</div></div>
-      <div class="tile cor-serious"><div class="valor" id="osPendentes">—</div><div class="rotulo">Pendentes</div></div>
-      <div class="tile cor-critical"><div class="valor" id="osImpedidas">—</div><div class="rotulo">Impedidas</div></div>
-    </section>
-    <div class="lista" id="listaOs" style="grid-template-columns:1fr;">
-      <div class="vazio">Carregando dados…</div>
-    </div>
-    <footer class="legenda">
-      <div class="item"><span class="ponto" style="background:var(--good)"></span> Concluída</div>
-      <div class="item"><span class="ponto" style="background:var(--warning)"></span> Em execução</div>
-      <div class="item"><span class="ponto" style="background:var(--serious)"></span> Pendente</div>
-      <div class="item"><span class="ponto" style="background:var(--critical)"></span> Impedida</div>
-      <div class="rodape-info">Dados do CMMS (sincronização com a Melvin) — só OS com programação real, não as só abertas no dia.</div>
-    </footer>
-
-    <div class="secao-titulo">Rádios (controle separado — não entram nas contagens acima)</div>
-    <div class="radios-box" id="radiosBox">
-      <div class="mini"><span class="valor" id="radTotal">—</span><span class="rotulo">emprestados</span></div>
-      <div class="sep"></div>
-      <div class="mini"><span class="valor" id="radAtrasados" style="color:var(--critical)">—</span><span class="rotulo">atrasados</span></div>
-      <div class="sep"></div>
-      <div class="mini"><span class="valor" id="radFixos" style="color:var(--warning)">—</span><span class="rotulo">fixos</span></div>
+    <div class="dots" id="dots">
+      <span class="dot ativo" data-dot="0"></span>
+      <span class="dot" data-dot="1"></span>
     </div>
   </div>
 
@@ -488,6 +513,20 @@
 
   document.getElementById("btnAtualizar").addEventListener("click", carregar);
 
+  // ---- alternância automática entre as telas 16:9 (Ferramentas / Programação) ----
+  const TELAS = document.querySelectorAll(".tela");
+  const DOTS = document.querySelectorAll(".dot");
+  const SLIDE_MS = 20 * 1000;
+  let telaAtual = 0;
+  let proximaTela = Date.now() + SLIDE_MS;
+
+  function mostrarTela(idx) {
+    telaAtual = idx;
+    TELAS.forEach((el, i) => el.classList.toggle("ativa", i === idx));
+    DOTS.forEach((el, i) => el.classList.toggle("ativo", i === idx));
+    proximaTela = Date.now() + SLIDE_MS;
+  }
+
   function tick() {
     const agora = new Date();
     document.getElementById("relogio").textContent = agora.toLocaleTimeString("pt-BR");
@@ -499,6 +538,7 @@
     const restanteSeg = Math.floor((restanteMs % 60000) / 1000);
     document.getElementById("contagem").textContent = `${restanteMin}m${String(restanteSeg).padStart(2, "0")}s`;
     if (restanteMs <= 0) carregar();
+    if (Date.now() >= proximaTela) mostrarTela((telaAtual + 1) % TELAS.length);
   }
 
   tick();
