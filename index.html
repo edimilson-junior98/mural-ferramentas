@@ -460,7 +460,10 @@
     try {
       const [ferramentasRes, osRes] = await Promise.all([
         client.from(TABLE).select("data, updated_at").eq("id", ROW_ID).maybeSingle(),
-        client.from(TABLE_OS).select("data").eq("id", ROW_ID).maybeSingle(),
+        // Só extrai o campo "ordens" do blob do CMMS (que também tem motores,
+        // ativos, solicitações, planos etc.) — evitar baixar isso tudo é o
+        // que corta o delay real de carregamento desta seção.
+        client.from(TABLE_OS).select("ordens:data->ordens").eq("id", ROW_ID).maybeSingle(),
       ]);
       if (ferramentasRes.error) throw ferramentasRes.error;
       if (!ferramentasRes.data) throw new Error("Linha de dados não encontrada na tabela.");
@@ -470,7 +473,7 @@
       if (osRes.error) {
         console.error(osRes.error);
       } else if (osRes.data) {
-        renderOs(osRes.data.data || {});
+        renderOs(osRes.data || {});
       }
 
       document.getElementById("painelAtualizadoEm").textContent = new Date().toLocaleTimeString("pt-BR");
