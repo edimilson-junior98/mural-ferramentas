@@ -48,6 +48,45 @@
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
   .dot.ativo { background: var(--brand-light); }
 
+  /* ---- tema da tela de Programação — visual copiado do fertgrow-mural-os
+     (github.com/edimilson-junior98/fertgrow-mural-os), igual o original
+     pedido, com paleta verde-escura própria só nesta tela. ---- */
+  body.tema-os { background: #0a1410; }
+  .tela[data-tela="1"] {
+    --os-surface: #101d16; --os-surface2: #16261d; --os-border: #213328;
+    --os-text: #e9f2ea; --os-muted: #8aa08d; --os-brand: #0b6b33; --os-brand-light: #afd676;
+    --os-emerald: #34d399; --os-amber: #fbbf24; --os-rose: #fb7185; --os-cyan: #22d3ee;
+    color: var(--os-text);
+  }
+  .tela[data-tela="1"] #osRoot { flex: 1; min-height: 0; overflow-y: auto; }
+  .tela[data-tela="1"] .os-row { display: flex; align-items: center; gap: 8px; }
+  .tela[data-tela="1"] .os-card {
+    background: var(--os-surface); border: 1px solid var(--os-border);
+    border-radius: 14px; padding: 16px;
+  }
+  .tela[data-tela="1"] .os-empty {
+    text-align: center; color: var(--os-muted); padding: 50px 20px;
+    border: 1px dashed var(--os-border); border-radius: 14px;
+  }
+  .tela[data-tela="1"] .os-empty h3 { color: var(--os-text); font-size: 15px; margin-bottom: 6px; }
+  .tela[data-tela="1"] .os-badge {
+    padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
+    white-space: nowrap; display: inline-block;
+  }
+  .tela[data-tela="1"] .os-btn {
+    background: var(--os-brand); color: #fff; border: none; padding: 7px 13px;
+    border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .tela[data-tela="1"] .os-btn:hover { background: var(--os-brand-light); }
+  .tela[data-tela="1"] .os-btn.ghost { background: transparent; border: 1px solid var(--os-border); color: var(--os-muted); }
+  .tela[data-tela="1"] .os-btn.ghost:hover { color: var(--os-text); border-color: #2c4534; }
+  .tela[data-tela="1"] .os-btn.icon-only { padding: 5px 9px; }
+  .tela[data-tela="1"] select.os-select {
+    background: var(--os-surface2); border: 1px solid var(--os-border); color: var(--os-text);
+    padding: 5px 9px; border-radius: 8px; font-size: 12.5px;
+  }
+
   /* ---- cabeçalho ---- */
   header {
     display: flex; align-items: flex-start; justify-content: space-between;
@@ -226,24 +265,7 @@
       </section>
 
       <section class="tela" data-tela="1">
-        <div class="secao-titulo">Programação de Manutenção — Hoje (<span id="osData">—</span>)</div>
-        <section class="stats" id="osStats">
-          <div class="tile"><div class="valor" id="osTotal">—</div><div class="rotulo">OS programadas</div></div>
-          <div class="tile cor-good"><div class="valor" id="osConcluidas">—</div><div class="rotulo">Concluídas</div></div>
-          <div class="tile cor-warning"><div class="valor" id="osExecucao">—</div><div class="rotulo">Em execução</div></div>
-          <div class="tile cor-serious"><div class="valor" id="osPendentes">—</div><div class="rotulo">Pendentes</div></div>
-          <div class="tile cor-critical"><div class="valor" id="osImpedidas">—</div><div class="rotulo">Impedidas</div></div>
-        </section>
-        <div class="lista" id="listaOs" style="grid-template-columns:1fr;">
-          <div class="vazio">Carregando dados…</div>
-        </div>
-        <footer class="legenda">
-          <div class="item"><span class="ponto" style="background:var(--good)"></span> Concluída</div>
-          <div class="item"><span class="ponto" style="background:var(--warning)"></span> Em execução</div>
-          <div class="item"><span class="ponto" style="background:var(--serious)"></span> Pendente</div>
-          <div class="item"><span class="ponto" style="background:var(--critical)"></span> Impedida</div>
-          <div class="rodape-info">Dados do CMMS (sincronização com a Melvin) — só OS com programação real, não as só abertas no dia.</div>
-        </footer>
+        <div id="osRoot"><div style="padding:40px;color:var(--os-muted, var(--muted));">Carregando…</div></div>
       </section>
     </div>
 
@@ -401,75 +423,206 @@
     document.getElementById("radFixos").textContent = radContagens.fixos;
   }
 
-  // Mesmo mapeamento de status/rótulo usado em "Programação do Dia" no CMMS
-  // (js/programacaoDia.js), só remapeado pras 4 cores fixas desta página
-  // (não existe aqui um 5º tom "info" como no CMMS).
-  const OS_CORES = { Concluída: "good", "Em Andamento": "warning", Aberta: "serious", Cancelada: "critical" };
-  const OS_LABEL = { Concluída: "Concluída", "Em Andamento": "Em execução", Aberta: "Pendente", Cancelada: "Impedida" };
-  const OS_SEM_OFICINA = "Sem oficina definida";
-
-  function renderOsLinha(o) {
-    const cor = OS_CORES[o.status] || "warning";
-    const label = OS_LABEL[o.status] || o.status || "—";
-    const ativoLabel = [o.tagAtivo, o.nomeAtivo].filter(Boolean).join(" · ") || "—";
-    const el = document.createElement("div");
-    el.className = `linha cor-${cor}`;
-    el.innerHTML = `
-      <div>
-        <div class="ferramenta-nome">${escapeHtml(o.numero || "—")}</div>
-        <div class="ferramenta-codigo">${escapeHtml(o.descricao || "")}</div>
-      </div>
-      <div>
-        <div class="responsavel">${escapeHtml(ativoLabel)}</div>
-        <div class="retirada">${escapeHtml(o.planta || "—")} · ${o.horasPrevistas || 0}h</div>
-      </div>
-      <div><span class="badge cor-${cor}"><span class="ponto"></span>${label}</span></div>
-    `;
-    return el;
+  // ---- Tela de Programação: réplica do fertgrow-mural-os (mesma lógica de
+  // agrupar por oficina com rotação automática de slide, dia anterior/
+  // seguinte e cards por executante), só lendo os dados já trazidos pra cá
+  // em vez de buscar o Supabase de novo. ----
+  const OS_PD_SEM_EXECUTANTE = "Sem executante definido";
+  const OS_STATUS_INFO = {
+    Concluída: { label: "Concluída", cor: "var(--os-emerald)", bg: "rgba(52,211,153,.14)", dot: "✓" },
+    "Em Andamento": { label: "Em execução", cor: "var(--os-cyan)", bg: "rgba(34,211,238,.14)", dot: "▶" },
+    Aberta: { label: "Pendente", cor: "var(--os-amber)", bg: "rgba(251,191,36,.14)", dot: "•" },
+    Cancelada: { label: "Impedida", cor: "var(--os-rose)", bg: "rgba(251,113,133,.14)", dot: "⚠" },
+  };
+  function osStatusInfo(status) {
+    return OS_STATUS_INFO[status] || { label: status || "—", cor: "var(--os-muted)", bg: "rgba(138,148,172,.14)", dot: "•" };
   }
 
-  function renderOs(payload) {
-    const ordens = (payload && payload.ordens) || [];
+  function osOrdensComDia(db) {
+    return ((db && db.ordens) || []).filter((o) => o.melvinId && o.dataProgramada && o.temProgramacaoReal);
+  }
+  function osDiasDisponiveis(db) {
+    return [...new Set(osOrdensComDia(db).map((o) => o.dataProgramada))].sort();
+  }
+  function osDiaPadrao(db) {
+    const dias = osDiasDisponiveis(db);
     const hoje = hojeISO();
-    const doDia = ordens.filter((o) => o.melvinId && o.dataProgramada === hoje && o.temProgramacaoReal);
+    if (!dias.length) return hoje;
+    if (dias.includes(hoje)) return hoje;
+    const anteriores = dias.filter((d) => d <= hoje);
+    return anteriores.length ? anteriores[anteriores.length - 1] : dias[0];
+  }
+  const OS_DIAS_ABREV = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  function osDiaAbrevLabel(dataISO) {
+    const d = new Date(dataISO + "T00:00:00");
+    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} (${OS_DIAS_ABREV[d.getDay()]})`;
+  }
 
-    document.getElementById("osData").textContent = fmtDataCurta(hoje);
+  function osCardHTML(o) {
+    const info = osStatusInfo(o.status);
+    const ativoLabel = [o.tagAtivo, o.nomeAtivo].filter(Boolean).join(" · ") || "—";
+    return `
+      <div style="padding:8px 0;border-top:1px solid var(--os-border);">
+        <div class="os-row" style="justify-content:space-between;gap:8px;">
+          <b style="font-size:12.5px;color:var(--os-brand-light);">${escapeHtml(o.numero || "")}</b>
+          ${o.planta ? `<span class="os-badge" style="background:var(--os-surface2);color:var(--os-muted);">${escapeHtml(o.planta)}</span>` : ""}
+        </div>
+        <div style="font-size:13px;margin:3px 0;">${escapeHtml(o.descricao || "")}</div>
+        <div class="os-row" style="justify-content:space-between;gap:8px;font-size:11.5px;color:var(--os-muted);">
+          <span>${escapeHtml(ativoLabel)}</span><span>${o.horasPrevistas || 0}h</span>
+        </div>
+        <span class="os-badge" style="margin-top:4px;background:${info.bg};color:${info.cor};">${info.dot} ${info.label}</span>
+      </div>`;
+  }
 
+  function osExecutanteCardHTML(nome, lista) {
     const contagem = { Concluída: 0, "Em Andamento": 0, Aberta: 0, Cancelada: 0 };
-    doDia.forEach((o) => { if (contagem[o.status] !== undefined) contagem[o.status]++; });
-    document.getElementById("osTotal").textContent = doDia.length;
-    document.getElementById("osConcluidas").textContent = contagem["Concluída"];
-    document.getElementById("osExecucao").textContent = contagem["Em Andamento"];
-    document.getElementById("osPendentes").textContent = contagem["Aberta"];
-    document.getElementById("osImpedidas").textContent = contagem["Cancelada"];
+    lista.forEach((o) => { if (contagem[o.status] !== undefined) contagem[o.status]++; });
+    return `
+      <div class="os-card">
+        <div class="os-row" style="justify-content:space-between;">
+          <b style="font-size:14px;">${escapeHtml(nome)}</b>
+          <span style="font-size:11.5px;color:var(--os-muted);">${lista.length} OS</span>
+        </div>
+        <div class="os-row" style="gap:10px;font-size:11.5px;margin:6px 0 2px;">
+          <span style="color:var(--os-emerald);">✓ ${contagem["Concluída"]}</span>
+          <span style="color:var(--os-cyan);">▶ ${contagem["Em Andamento"]}</span>
+          <span style="color:var(--os-amber);">• ${contagem["Aberta"]}</span>
+          <span style="color:var(--os-rose);">⚠ ${contagem["Cancelada"]}</span>
+        </div>
+        <div>${lista.map(osCardHTML).join("")}</div>
+      </div>`;
+  }
 
-    const porOficina = {};
+  function osOficinaSlideHTML(nomeOficina, ordensOficina, idx, total) {
+    const contagem = { Concluída: 0, "Em Andamento": 0, Aberta: 0, Cancelada: 0 };
+    ordensOficina.forEach((o) => { if (contagem[o.status] !== undefined) contagem[o.status]++; });
+    const porExec = {};
+    ordensOficina.forEach((o) => {
+      const k = o.executante || OS_PD_SEM_EXECUTANTE;
+      (porExec[k] = porExec[k] || []).push(o);
+    });
+    const execs = Object.keys(porExec).sort((a, b) => (a === OS_PD_SEM_EXECUTANTE ? 1 : b === OS_PD_SEM_EXECUTANTE ? -1 : a.localeCompare(b, "pt-BR")));
+    return `
+      <div style="font-size:14px;color:var(--os-brand-light);font-weight:700;margin-bottom:4px;">Oficina ${idx + 1} de ${total} — ${escapeHtml(nomeOficina)}</div>
+      <div class="os-row" style="gap:14px;font-size:13px;color:var(--os-muted);margin-bottom:14px;flex-wrap:wrap;">
+        <span>${ordensOficina.length} OS</span>
+        <span style="color:var(--os-emerald);">✓ ${contagem["Concluída"]} concluídas</span>
+        <span style="color:var(--os-cyan);">▶ ${contagem["Em Andamento"]} em execução</span>
+        <span style="color:var(--os-amber);">• ${contagem["Aberta"]} pendentes</span>
+        <span style="color:var(--os-rose);">⚠ ${contagem["Cancelada"]} impedidas</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+        ${execs.map((nome) => osExecutanteCardHTML(nome, porExec[nome])).join("")}
+      </div>`;
+  }
+
+  // Mesma regra de normalização de oficina do fertgrow-mural-os: a Melvin
+  // cadastra a mesma equipe em variantes (ex: "Elétrica Preventiva"/
+  // "Elétrica Corretiva") — isso junta num slide só.
+  function osNormalizarOficina(nome) {
+    return (nome || "").trim().replace(/\s+(preventiva|corretiva)$/i, "").trim();
+  }
+  function osOficinasDoDia(db, dia) {
+    const doDia = osOrdensComDia(db).filter((o) => o.dataProgramada === dia);
+    const porOf = {};
     doDia.forEach((o) => {
-      const chave = o.oficina || OS_SEM_OFICINA;
-      (porOficina[chave] = porOficina[chave] || []).push(o);
+      const original = (o.oficina || "").trim() || "Sem oficina definida";
+      const chave = osNormalizarOficina(o.oficina) || "Sem oficina definida";
+      if (!porOf[chave]) porOf[chave] = { ordens: [], nomesOriginais: {} };
+      porOf[chave].ordens.push(o);
+      porOf[chave].nomesOriginais[original] = (porOf[chave].nomesOriginais[original] || 0) + 1;
     });
-    const oficinas = Object.keys(porOficina).sort((a, b) => {
-      if (a === OS_SEM_OFICINA) return 1;
-      if (b === OS_SEM_OFICINA) return -1;
-      return a.localeCompare(b, "pt-BR");
+    return Object.keys(porOf).sort((a, b) => a.localeCompare(b, "pt-BR")).map((chave) => {
+      const grupo = porOf[chave];
+      const nomes = Object.keys(grupo.nomesOriginais);
+      const preventiva = nomes.find((n) => /preventiva$/i.test(n));
+      const maisComum = nomes.sort((a, b) => grupo.nomesOriginais[b] - grupo.nomesOriginais[a])[0];
+      return { nome: preventiva || maisComum || chave, ordens: grupo.ordens };
     });
+  }
 
-    const listaEl = document.getElementById("listaOs");
-    listaEl.innerHTML = "";
-    if (!oficinas.length) {
-      listaEl.innerHTML = '<div class="vazio">Nenhuma OS programada para hoje.</div>';
-      return;
-    }
-    oficinas.forEach((nome) => {
-      const header = document.createElement("div");
-      header.className = "secao-titulo";
-      header.style.cssText = "margin:14px 0 6px;font-size:12px;";
-      header.textContent = nome;
-      listaEl.appendChild(header);
-      porOficina[nome]
-        .sort((a, b) => (a.numero || "").localeCompare(b.numero || ""))
-        .forEach((o) => listaEl.appendChild(renderOsLinha(o)));
-    });
+  const OS_SLIDE_OPTIONS = [8, 12, 20, 30];
+  let osDayData = null;
+  let osDate = null;
+  let osFollowingToday = true;
+  let osSlideMode = true;
+  let osSlideSeconds = 12;
+  let osSlideSecondsLeft = osSlideSeconds;
+  let osSlideIdx = 0;
+
+  function osSlideRateOptionsHTML() {
+    return OS_SLIDE_OPTIONS.map((s) => `<option value="${s}" ${s === osSlideSeconds ? "selected" : ""}>${s}s</option>`).join("");
+  }
+
+  function osPaint() {
+    const root = document.getElementById("osRoot");
+    if (!root) return;
+    if (!osDayData) { root.innerHTML = '<div style="padding:40px;color:var(--os-muted);">Carregando…</div>'; return; }
+    const oficinas = osOficinasDoDia(osDayData, osDate);
+    if (osSlideIdx >= oficinas.length) osSlideIdx = 0;
+    const showingSlide = osSlideMode && oficinas.length > 0;
+    const dateLabel = osDiaAbrevLabel(osDate);
+    const dotsHTML = showingSlide && oficinas.length > 1 ? `
+      <div class="os-row" style="justify-content:center;gap:6px;margin:4px 0 14px;">
+        ${oficinas.map((o, i) => `<div title="${escapeHtml(o.nome)}" style="width:${i === osSlideIdx ? "22px" : "8px"};height:8px;border-radius:4px;background:${i === osSlideIdx ? "var(--os-brand-light)" : "var(--os-border)"}"></div>`).join("")}
+      </div>` : "";
+    const diasOpts = osDiasDisponiveis(osDayData);
+    const idxDia = diasOpts.indexOf(osDate);
+
+    root.innerHTML = `
+      <div class="os-row" style="justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:13px;color:var(--os-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Programação de Manutenção</div>
+          <div class="os-row" style="gap:8px;margin-top:4px;">
+            <button class="os-btn ghost icon-only" id="osPrevDayBtn" type="button" title="Dia anterior" ${idxDia <= 0 ? "disabled" : ""}>‹</button>
+            <div style="font-size:24px;font-weight:800;">${escapeHtml(dateLabel)}</div>
+            <button class="os-btn ghost icon-only" id="osNextDayBtn" type="button" title="Dia seguinte" ${idxDia < 0 || idxDia >= diasOpts.length - 1 ? "disabled" : ""}>›</button>
+            ${!osFollowingToday ? `<button class="os-btn" id="osTodayBtn" type="button">🏠 Hoje</button>` : ""}
+          </div>
+        </div>
+        <div class="os-row" style="gap:12px;align-items:center;flex-wrap:wrap;">
+          <label class="os-row" style="gap:6px;align-items:center;font-size:11.5px;color:var(--os-muted);cursor:pointer;">
+            <input type="checkbox" id="osSlideToggle" ${osSlideMode ? "checked" : ""} /> Slides por oficina
+          </label>
+          ${osSlideMode ? `
+          <div class="os-row" style="gap:6px;align-items:center;">
+            <button class="os-btn ghost icon-only" id="osSlidePrevBtn" type="button" title="Oficina anterior">‹</button>
+            <select class="os-select" id="osSlideRate" title="Troca de oficina a cada">${osSlideRateOptionsHTML()}</select>
+            <button class="os-btn ghost icon-only" id="osSlideNextBtn" type="button" title="Próxima oficina">›</button>
+          </div>` : ""}
+        </div>
+      </div>
+      ${dotsHTML}
+      ${!oficinas.length
+        ? `<div class="os-empty"><h3>Nenhuma OS programada nesse dia</h3></div>`
+        : `<div class="os-card">${showingSlide
+            ? osOficinaSlideHTML(oficinas[osSlideIdx].nome, oficinas[osSlideIdx].ordens, osSlideIdx, oficinas.length)
+            : oficinas.map((o, i) => osOficinaSlideHTML(o.nome, o.ordens, i, oficinas.length)).join('<div style="height:24px;"></div>')}</div>`}
+      <p style="font-size:10.5px;color:var(--os-muted);margin-top:16px;text-align:center;">Atualizado às ${escapeHtml(new Date().toLocaleTimeString("pt-BR"))}</p>
+    `;
+
+    document.getElementById("osPrevDayBtn").addEventListener("click", () => osChangeDay(-1));
+    document.getElementById("osNextDayBtn").addEventListener("click", () => osChangeDay(1));
+    const osTodayBtn = document.getElementById("osTodayBtn");
+    if (osTodayBtn) osTodayBtn.addEventListener("click", () => { osFollowingToday = true; osDate = osDiaPadrao(osDayData); osPaint(); });
+    document.getElementById("osSlideToggle").addEventListener("change", (e) => { osSlideMode = e.target.checked; osSlideIdx = 0; osSlideSecondsLeft = osSlideSeconds; osPaint(); });
+    const osSlideRateSel = document.getElementById("osSlideRate");
+    if (osSlideRateSel) osSlideRateSel.addEventListener("change", (e) => { osSlideSeconds = Number(e.target.value) || 12; osSlideSecondsLeft = osSlideSeconds; });
+    const osSlidePrevBtn = document.getElementById("osSlidePrevBtn");
+    if (osSlidePrevBtn) osSlidePrevBtn.addEventListener("click", () => { const n = oficinas.length; if (!n) return; osSlideIdx = (osSlideIdx - 1 + n) % n; osSlideSecondsLeft = osSlideSeconds; osPaint(); });
+    const osSlideNextBtn = document.getElementById("osSlideNextBtn");
+    if (osSlideNextBtn) osSlideNextBtn.addEventListener("click", () => { const n = oficinas.length; if (!n) return; osSlideIdx = (osSlideIdx + 1) % n; osSlideSecondsLeft = osSlideSeconds; osPaint(); });
+  }
+
+  function osChangeDay(delta) {
+    osFollowingToday = false;
+    const dias = osDiasDisponiveis(osDayData);
+    const idx = dias.indexOf(osDate);
+    const novo = idx + delta;
+    if (novo < 0 || novo >= dias.length) return;
+    osDate = dias[novo];
+    osPaint();
   }
 
   function setStatus(msg, erro) {
@@ -498,7 +651,9 @@
       if (osRes.error) {
         console.error(osRes.error);
       } else if (osRes.data) {
-        renderOs(osRes.data || {});
+        osDayData = osRes.data;
+        if (osFollowingToday || !osDate) osDate = osDiaPadrao(osDayData);
+        osPaint();
       }
 
       document.getElementById("painelAtualizadoEm").textContent = new Date().toLocaleTimeString("pt-BR");
@@ -524,6 +679,7 @@
     telaAtual = idx;
     TELAS.forEach((el, i) => el.classList.toggle("ativa", i === idx));
     DOTS.forEach((el, i) => el.classList.toggle("ativo", i === idx));
+    document.body.classList.toggle("tema-os", idx === 1);
     proximaTela = Date.now() + SLIDE_MS;
   }
 
@@ -539,6 +695,19 @@
     document.getElementById("contagem").textContent = `${restanteMin}m${String(restanteSeg).padStart(2, "0")}s`;
     if (restanteMs <= 0) carregar();
     if (Date.now() >= proximaTela) mostrarTela((telaAtual + 1) % TELAS.length);
+
+    // rotação automática das oficinas dentro da tela de Programação
+    if (osSlideMode && osDayData) {
+      const oficinas = osOficinasDoDia(osDayData, osDate);
+      if (oficinas.length > 1) {
+        osSlideSecondsLeft--;
+        if (osSlideSecondsLeft <= 0) {
+          osSlideIdx = (osSlideIdx + 1) % oficinas.length;
+          osSlideSecondsLeft = osSlideSeconds;
+          osPaint();
+        }
+      }
+    }
   }
 
   tick();
