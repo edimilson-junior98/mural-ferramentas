@@ -199,6 +199,25 @@
       </div>
     </footer>
 
+    <div class="secao-titulo" style="margin-top:30px;">Programação de Manutenção — Hoje (<span id="osData">—</span>)</div>
+    <section class="stats" id="osStats">
+      <div class="tile"><div class="valor" id="osTotal">—</div><div class="rotulo">OS programadas</div></div>
+      <div class="tile cor-good"><div class="valor" id="osConcluidas">—</div><div class="rotulo">Concluídas</div></div>
+      <div class="tile cor-warning"><div class="valor" id="osExecucao">—</div><div class="rotulo">Em execução</div></div>
+      <div class="tile cor-serious"><div class="valor" id="osPendentes">—</div><div class="rotulo">Pendentes</div></div>
+      <div class="tile cor-critical"><div class="valor" id="osImpedidas">—</div><div class="rotulo">Impedidas</div></div>
+    </section>
+    <div class="lista" id="listaOs" style="grid-template-columns:1fr;">
+      <div class="vazio">Carregando dados…</div>
+    </div>
+    <footer class="legenda">
+      <div class="item"><span class="ponto" style="background:var(--good)"></span> Concluída</div>
+      <div class="item"><span class="ponto" style="background:var(--warning)"></span> Em execução</div>
+      <div class="item"><span class="ponto" style="background:var(--serious)"></span> Pendente</div>
+      <div class="item"><span class="ponto" style="background:var(--critical)"></span> Impedida</div>
+      <div class="rodape-info">Dados do CMMS (sincronização com a Melvin) — só OS com programação real, não as só abertas no dia.</div>
+    </footer>
+
     <div class="secao-titulo">Rádios (controle separado — não entram nas contagens acima)</div>
     <div class="radios-box" id="radiosBox">
       <div class="mini"><span class="valor" id="radTotal">—</span><span class="rotulo">emprestados</span></div>
@@ -216,6 +235,7 @@
   const SUPABASE_URL = "https://woabzpjzjkaqkjmzsiqj.supabase.co";
   const SUPABASE_KEY = "sb_publishable_kAbXzgAybK885fnyV2-7kQ_6B623rg7";
   const TABLE = "controle_ferramentas_db";
+  const TABLE_OS = "fertgrow_db";
   const ROW_ID = 1;
   const REFRESH_MS = 60 * 60 * 1000; // 1 hora, conforme pedido
 
@@ -356,6 +376,77 @@
     document.getElementById("radFixos").textContent = radContagens.fixos;
   }
 
+  // Mesmo mapeamento de status/rótulo usado em "Programação do Dia" no CMMS
+  // (js/programacaoDia.js), só remapeado pras 4 cores fixas desta página
+  // (não existe aqui um 5º tom "info" como no CMMS).
+  const OS_CORES = { Concluída: "good", "Em Andamento": "warning", Aberta: "serious", Cancelada: "critical" };
+  const OS_LABEL = { Concluída: "Concluída", "Em Andamento": "Em execução", Aberta: "Pendente", Cancelada: "Impedida" };
+  const OS_SEM_OFICINA = "Sem oficina definida";
+
+  function renderOsLinha(o) {
+    const cor = OS_CORES[o.status] || "warning";
+    const label = OS_LABEL[o.status] || o.status || "—";
+    const ativoLabel = [o.tagAtivo, o.nomeAtivo].filter(Boolean).join(" · ") || "—";
+    const el = document.createElement("div");
+    el.className = `linha cor-${cor}`;
+    el.innerHTML = `
+      <div>
+        <div class="ferramenta-nome">${escapeHtml(o.numero || "—")}</div>
+        <div class="ferramenta-codigo">${escapeHtml(o.descricao || "")}</div>
+      </div>
+      <div>
+        <div class="responsavel">${escapeHtml(ativoLabel)}</div>
+        <div class="retirada">${escapeHtml(o.planta || "—")} · ${o.horasPrevistas || 0}h</div>
+      </div>
+      <div><span class="badge cor-${cor}"><span class="ponto"></span>${label}</span></div>
+    `;
+    return el;
+  }
+
+  function renderOs(payload) {
+    const ordens = (payload && payload.ordens) || [];
+    const hoje = hojeISO();
+    const doDia = ordens.filter((o) => o.melvinId && o.dataProgramada === hoje && o.temProgramacaoReal);
+
+    document.getElementById("osData").textContent = fmtDataCurta(hoje);
+
+    const contagem = { Concluída: 0, "Em Andamento": 0, Aberta: 0, Cancelada: 0 };
+    doDia.forEach((o) => { if (contagem[o.status] !== undefined) contagem[o.status]++; });
+    document.getElementById("osTotal").textContent = doDia.length;
+    document.getElementById("osConcluidas").textContent = contagem["Concluída"];
+    document.getElementById("osExecucao").textContent = contagem["Em Andamento"];
+    document.getElementById("osPendentes").textContent = contagem["Aberta"];
+    document.getElementById("osImpedidas").textContent = contagem["Cancelada"];
+
+    const porOficina = {};
+    doDia.forEach((o) => {
+      const chave = o.oficina || OS_SEM_OFICINA;
+      (porOficina[chave] = porOficina[chave] || []).push(o);
+    });
+    const oficinas = Object.keys(porOficina).sort((a, b) => {
+      if (a === OS_SEM_OFICINA) return 1;
+      if (b === OS_SEM_OFICINA) return -1;
+      return a.localeCompare(b, "pt-BR");
+    });
+
+    const listaEl = document.getElementById("listaOs");
+    listaEl.innerHTML = "";
+    if (!oficinas.length) {
+      listaEl.innerHTML = '<div class="vazio">Nenhuma OS programada para hoje.</div>';
+      return;
+    }
+    oficinas.forEach((nome) => {
+      const header = document.createElement("div");
+      header.className = "secao-titulo";
+      header.style.cssText = "margin:14px 0 6px;font-size:12px;";
+      header.textContent = nome;
+      listaEl.appendChild(header);
+      porOficina[nome]
+        .sort((a, b) => (a.numero || "").localeCompare(b.numero || ""))
+        .forEach((o) => listaEl.appendChild(renderOsLinha(o)));
+    });
+  }
+
   function setStatus(msg, erro) {
     const el = document.getElementById("statusMsg");
     el.textContent = msg;
@@ -367,15 +458,21 @@
   async function carregar() {
     setStatus("Atualizando…");
     try {
-      const { data, error } = await client
-        .from(TABLE)
-        .select("data, updated_at")
-        .eq("id", ROW_ID)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error("Linha de dados não encontrada na tabela.");
-      render(data.data || {});
-      document.getElementById("fonteAtualizadoEm").textContent = fmtDataHoraCompleta(data.updated_at);
+      const [ferramentasRes, osRes] = await Promise.all([
+        client.from(TABLE).select("data, updated_at").eq("id", ROW_ID).maybeSingle(),
+        client.from(TABLE_OS).select("data").eq("id", ROW_ID).maybeSingle(),
+      ]);
+      if (ferramentasRes.error) throw ferramentasRes.error;
+      if (!ferramentasRes.data) throw new Error("Linha de dados não encontrada na tabela.");
+      render(ferramentasRes.data.data || {});
+      document.getElementById("fonteAtualizadoEm").textContent = fmtDataHoraCompleta(ferramentasRes.data.updated_at);
+
+      if (osRes.error) {
+        console.error(osRes.error);
+      } else if (osRes.data) {
+        renderOs(osRes.data.data || {});
+      }
+
       document.getElementById("painelAtualizadoEm").textContent = new Date().toLocaleTimeString("pt-BR");
       setStatus("Atualizado com sucesso.");
     } catch (e) {
