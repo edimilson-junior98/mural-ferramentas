@@ -547,7 +547,7 @@
   let osDate = null;
   let osFollowingToday = true;
   let osSlideMode = true;
-  let osSlideSeconds = 12;
+  let osSlideSeconds = 20;
   let osSlideSecondsLeft = osSlideSeconds;
   let osSlideIdx = 0;
 
@@ -608,7 +608,7 @@
     if (osTodayBtn) osTodayBtn.addEventListener("click", () => { osFollowingToday = true; osDate = osDiaPadrao(osDayData); osPaint(); });
     document.getElementById("osSlideToggle").addEventListener("change", (e) => { osSlideMode = e.target.checked; osSlideIdx = 0; osSlideSecondsLeft = osSlideSeconds; osPaint(); });
     const osSlideRateSel = document.getElementById("osSlideRate");
-    if (osSlideRateSel) osSlideRateSel.addEventListener("change", (e) => { osSlideSeconds = Number(e.target.value) || 12; osSlideSecondsLeft = osSlideSeconds; });
+    if (osSlideRateSel) osSlideRateSel.addEventListener("change", (e) => { osSlideSeconds = Number(e.target.value) || 20; osSlideSecondsLeft = osSlideSeconds; });
     const osSlidePrevBtn = document.getElementById("osSlidePrevBtn");
     if (osSlidePrevBtn) osSlidePrevBtn.addEventListener("click", () => { const n = oficinas.length; if (!n) return; osSlideIdx = (osSlideIdx - 1 + n) % n; osSlideSecondsLeft = osSlideSeconds; osPaint(); });
     const osSlideNextBtn = document.getElementById("osSlideNextBtn");
