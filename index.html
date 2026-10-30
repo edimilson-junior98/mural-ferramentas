@@ -694,10 +694,13 @@
     const restanteSeg = Math.floor((restanteMs % 60000) / 1000);
     document.getElementById("contagem").textContent = `${restanteMin}m${String(restanteSeg).padStart(2, "0")}s`;
     if (restanteMs <= 0) carregar();
-    if (Date.now() >= proximaTela) mostrarTela((telaAtual + 1) % TELAS.length);
 
-    // rotação automática das oficinas dentro da tela de Programação
-    if (osSlideMode && osDayData) {
+    // rotação automática das oficinas dentro da tela de Programação — roda
+    // ANTES da troca de tela abaixo (e só conta enquanto ela já está
+    // visível) pra, quando as duas durações coincidem (hoje, 20s/20s), a
+    // troca de oficina e a troca de tela acontecerem exatamente juntas, sem
+    // sobrar 1 segundo de uma oficina "vazando" antes/depois da tela sumir.
+    if (osSlideMode && osDayData && telaAtual === 1) {
       const oficinas = osOficinasDoDia(osDayData, osDate);
       if (oficinas.length > 1) {
         osSlideSecondsLeft--;
@@ -708,6 +711,8 @@
         }
       }
     }
+
+    if (Date.now() >= proximaTela) mostrarTela((telaAtual + 1) % TELAS.length);
   }
 
   tick();
