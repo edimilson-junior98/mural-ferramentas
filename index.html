@@ -520,26 +520,17 @@
   // Mesma regra de normalização de oficina do fertgrow-mural-os: a Melvin
   // cadastra a mesma equipe em variantes (ex: "Elétrica Preventiva"/
   // "Elétrica Corretiva") — isso junta num slide só.
-  function osNormalizarOficina(nome) {
-    return (nome || "").trim().replace(/\s+(preventiva|corretiva)$/i, "").trim();
-  }
+  // Cada oficina vira o seu próprio slide, com o nome exato que vem da
+  // Melvin — "Mecânica Preventiva" e "Mecânica Corretiva", por exemplo, NÃO
+  // se juntam mais num slide só (pedido explícito: separar cada uma).
   function osOficinasDoDia(db, dia) {
     const doDia = osOrdensComDia(db).filter((o) => o.dataProgramada === dia);
     const porOf = {};
     doDia.forEach((o) => {
-      const original = (o.oficina || "").trim() || "Sem oficina definida";
-      const chave = osNormalizarOficina(o.oficina) || "Sem oficina definida";
-      if (!porOf[chave]) porOf[chave] = { ordens: [], nomesOriginais: {} };
-      porOf[chave].ordens.push(o);
-      porOf[chave].nomesOriginais[original] = (porOf[chave].nomesOriginais[original] || 0) + 1;
+      const chave = (o.oficina || "").trim() || "Sem oficina definida";
+      (porOf[chave] = porOf[chave] || []).push(o);
     });
-    return Object.keys(porOf).sort((a, b) => a.localeCompare(b, "pt-BR")).map((chave) => {
-      const grupo = porOf[chave];
-      const nomes = Object.keys(grupo.nomesOriginais);
-      const preventiva = nomes.find((n) => /preventiva$/i.test(n));
-      const maisComum = nomes.sort((a, b) => grupo.nomesOriginais[b] - grupo.nomesOriginais[a])[0];
-      return { nome: preventiva || maisComum || chave, ordens: grupo.ordens };
-    });
+    return Object.keys(porOf).sort((a, b) => a.localeCompare(b, "pt-BR")).map((chave) => ({ nome: chave, ordens: porOf[chave] }));
   }
 
   const OS_SLIDE_OPTIONS = [8, 12, 20, 30];
