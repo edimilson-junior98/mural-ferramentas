@@ -539,7 +539,6 @@
   let osFollowingToday = true;
   let osSlideMode = true;
   let osSlideSeconds = 20;
-  let osSlideSecondsLeft = osSlideSeconds;
   let osSlideIdx = 0;
 
   function osSlideRateOptionsHTML() {
@@ -597,13 +596,13 @@
     document.getElementById("osNextDayBtn").addEventListener("click", () => osChangeDay(1));
     const osTodayBtn = document.getElementById("osTodayBtn");
     if (osTodayBtn) osTodayBtn.addEventListener("click", () => { osFollowingToday = true; osDate = osDiaPadrao(osDayData); osPaint(); });
-    document.getElementById("osSlideToggle").addEventListener("change", (e) => { osSlideMode = e.target.checked; osSlideIdx = 0; osSlideSecondsLeft = osSlideSeconds; osPaint(); });
+    document.getElementById("osSlideToggle").addEventListener("change", (e) => { osSlideMode = e.target.checked; osSlideIdx = 0; proximaTela = Date.now() + osSlideSeconds * 1000; osPaint(); });
     const osSlideRateSel = document.getElementById("osSlideRate");
-    if (osSlideRateSel) osSlideRateSel.addEventListener("change", (e) => { osSlideSeconds = Number(e.target.value) || 20; osSlideSecondsLeft = osSlideSeconds; });
+    if (osSlideRateSel) osSlideRateSel.addEventListener("change", (e) => { osSlideSeconds = Number(e.target.value) || 20; proximaTela = Date.now() + osSlideSeconds * 1000; });
     const osSlidePrevBtn = document.getElementById("osSlidePrevBtn");
-    if (osSlidePrevBtn) osSlidePrevBtn.addEventListener("click", () => { const n = oficinas.length; if (!n) return; osSlideIdx = (osSlideIdx - 1 + n) % n; osSlideSecondsLeft = osSlideSeconds; osPaint(); });
+    if (osSlidePrevBtn) osSlidePrevBtn.addEventListener("click", () => { const n = oficinas.length; if (!n) return; osSlideIdx = (osSlideIdx - 1 + n) % n; proximaTela = Date.now() + osSlideSeconds * 1000; osPaint(); });
     const osSlideNextBtn = document.getElementById("osSlideNextBtn");
-    if (osSlideNextBtn) osSlideNextBtn.addEventListener("click", () => { const n = oficinas.length; if (!n) return; osSlideIdx = (osSlideIdx + 1) % n; osSlideSecondsLeft = osSlideSeconds; osPaint(); });
+    if (osSlideNextBtn) osSlideNextBtn.addEventListener("click", () => { const n = oficinas.length; if (!n) return; osSlideIdx = (osSlideIdx + 1) % n; proximaTela = Date.now() + osSlideSeconds * 1000; osPaint(); });
   }
 
   function osChangeDay(delta) {
@@ -659,19 +658,37 @@
 
   document.getElementById("btnAtualizar").addEventListener("click", carregar);
 
-  // ---- alternância automática entre as telas 16:9 (Ferramentas / Programação) ----
+  // ---- fluxo único de rotação: Ferramentas (Ns) -> oficina 1 (Ns) ->
+  // oficina 2 (Ns) -> ... -> oficina N (Ns) -> volta pra Ferramentas -> repete.
+  // Cada etapa (Ferramentas OU uma oficina) dura exatamente osSlideSeconds,
+  // sem exceção — nada de a tela de Programação "engolir" várias oficinas
+  // dentro de uma única janela de 20s.
   const TELAS = document.querySelectorAll(".tela");
   const DOTS = document.querySelectorAll(".dot");
-  const SLIDE_MS = 20 * 1000;
   let telaAtual = 0;
-  let proximaTela = Date.now() + SLIDE_MS;
+  let proximaTela = Date.now() + osSlideSeconds * 1000;
 
   function mostrarTela(idx) {
     telaAtual = idx;
     TELAS.forEach((el, i) => el.classList.toggle("ativa", i === idx));
     DOTS.forEach((el, i) => el.classList.toggle("ativo", i === idx));
     document.body.classList.toggle("tema-os", idx === 1);
-    proximaTela = Date.now() + SLIDE_MS;
+    proximaTela = Date.now() + osSlideSeconds * 1000;
+  }
+
+  function avancarFluxo() {
+    const oficinas = osDayData ? osOficinasDoDia(osDayData, osDate) : [];
+    if (telaAtual === 0) {
+      if (osSlideMode && oficinas.length > 0) osSlideIdx = 0;
+      osPaint();
+      mostrarTela(1);
+    } else if (osSlideMode && osSlideIdx < oficinas.length - 1) {
+      osSlideIdx++;
+      osPaint();
+      proximaTela = Date.now() + osSlideSeconds * 1000;
+    } else {
+      mostrarTela(0);
+    }
   }
 
   function tick() {
@@ -686,24 +703,7 @@
     document.getElementById("contagem").textContent = `${restanteMin}m${String(restanteSeg).padStart(2, "0")}s`;
     if (restanteMs <= 0) carregar();
 
-    // rotação automática das oficinas dentro da tela de Programação — roda
-    // ANTES da troca de tela abaixo (e só conta enquanto ela já está
-    // visível) pra, quando as duas durações coincidem (hoje, 20s/20s), a
-    // troca de oficina e a troca de tela acontecerem exatamente juntas, sem
-    // sobrar 1 segundo de uma oficina "vazando" antes/depois da tela sumir.
-    if (osSlideMode && osDayData && telaAtual === 1) {
-      const oficinas = osOficinasDoDia(osDayData, osDate);
-      if (oficinas.length > 1) {
-        osSlideSecondsLeft--;
-        if (osSlideSecondsLeft <= 0) {
-          osSlideIdx = (osSlideIdx + 1) % oficinas.length;
-          osSlideSecondsLeft = osSlideSeconds;
-          osPaint();
-        }
-      }
-    }
-
-    if (Date.now() >= proximaTela) mostrarTela((telaAtual + 1) % TELAS.length);
+    if (Date.now() >= proximaTela) avancarFluxo();
   }
 
   tick();
